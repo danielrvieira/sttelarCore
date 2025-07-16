@@ -16,13 +16,19 @@ ARG TICKETZ_REGISTRY_URL
 
 WORKDIR /usr/src/app
 
-# Copy only the necessary build artifacts from the build stage
-COPY --from=build --parents \
-  /usr/src/app/./dist \
-  /usr/src/app/./node_modules \
-  /usr/src/app/./package.json \
-  /usr/src/app/./scripts \
-  .
+# Instala o dos2unix para corrigir quebras de linha de scripts vindos do Windows
+# A base ghcr.io/ticketz-oss/node provavelmente é Debian/Ubuntu, então usamos apt-get
+RUN apt-get update && apt-get install -y dos2unix && rm -rf /var/lib/apt/lists/*
+
+# Copia os artefatos da build
+COPY --from=build /usr/src/app/dist/ ./dist/
+COPY --from=build /usr/src/app/node_modules/ ./node_modules/
+COPY --from=build /usr/src/app/package.json ./package.json
+COPY --from=build /usr/src/app/scripts/ ./scripts/
+
+# Converte os scripts para o formato Unix (LF) e garante permissão de execução
+RUN dos2unix ./scripts/*.sh \
+    && chmod +x ./scripts/*.sh
 
 ENV NODE_ENV=production
 ENV PORT=3000
